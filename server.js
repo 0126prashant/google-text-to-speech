@@ -1,5 +1,3 @@
-
-// Backend (app.js)
 const express = require('express');
 const cors = require('cors');
 const textToSpeech = require('@google-cloud/text-to-speech');
@@ -17,28 +15,36 @@ const client = new textToSpeech.TextToSpeechClient({
 
 app.post('/api/generate-audio', async (req, res) => {
   try {
-    const { ssmlText } = req.body;
+    let { ssmlText } = req.body;
 
     if (!ssmlText) {
       return res.status(400).json({ error: 'SSML text is required' });
     }
 
+    // Fix common SSML errors
+    ssmlText = ssmlText
+      // Fix unclosed emphasis tags
+      .replace(/<\/em>/g, '</emphasis>')
+      // Remove extra whitespace
+      .replace(/\s+/g, ' ')
+      // Ensure proper SSML structure
+      .trim();
+
     // Validate SSML structure
-    if (!ssmlText.trim().startsWith('<speak>') || !ssmlText.trim().endsWith('</speak>')) {
+    if (!ssmlText.startsWith('<speak>') || !ssmlText.endsWith('</speak>')) {
       return res.status(400).json({ error: 'Invalid SSML format' });
     }
 
     const request = {
       input: { ssml: ssmlText },
       voice: {
-        languageCode: 'en-IN',
+        languageCode: 'en-IN'
       },
       audioConfig: {
         audioEncoding: 'MP3',
-        pitch: 0,
-        speakingRate: 1.0,
-        volumeGainDb: 0,
         effectsProfileId: ['headphone-class-device'],
+        // Enable SSML prosody marks
+        enableTimePointing: ['SSML_MARK']
       },
     };
 
